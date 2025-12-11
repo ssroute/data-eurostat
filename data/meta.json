@@ -1,0 +1,13 @@
+{
+  "distance_units": "nm",
+  "node_schema": [
+    "id",
+    "lon",
+    "lat"
+  ],
+  "edge_schema": [
+    "from",
+    "to",
+    "length_nm"
+  ]
+}
