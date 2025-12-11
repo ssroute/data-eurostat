@@ -34,7 +34,7 @@ def sync_data():
 
 
 def sync_versions(version: str):
-    # js/package.json
+    # packages/js/package.json
     pkg_path = JS_DIR / "package.json"
     pkg = json.loads(pkg_path.read_text())
     pkg["version"] = version
