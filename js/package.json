@@ -1,0 +1,28 @@
+{
+  "name": "@ssroute/data-eurostat",
+  "version": "0.1.0",
+  "description": "Eurostat SeaRoute / MARNET maritime routing graph data (GeoJSON) for JavaScript/TypeScript.",
+  "main": "index.cjs",
+  "type": "commonjs",
+  "files": [
+    "index.cjs",
+    "data",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ssroute/data-eurostat.git"
+  },
+  "keywords": [
+    "searoute",
+    "eurostat",
+    "maritime",
+    "routing",
+    "geojson",
+    "graph"
+  ],
+  "author": "ssroute",
+  "license": "EUPL-1.2"
+}
+

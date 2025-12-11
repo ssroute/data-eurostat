@@ -27,3 +27,26 @@ Usage notes
 - Length units: nautical miles (`length_nm`).
 - Coordinate reference: longitude, latitude in decimal degrees (WGS84).
 
+Packages
+--------
+This repository is the canonical source for the graph data, with two thin packages that embed and expose the data:
+
+- **NPM**: `@ssroute/data-eurostat` (in `packages/js/`)
+- **Dart**: `ssroute_data_eurostat` (in `packages/dart/`)
+
+Release workflow
+----------------
+To cut a new data release:
+
+1. Update files under `data/` as needed.
+2. Bump the version in the root `VERSION` file (e.g. `0.2.0`).
+3. Run: `python scripts/release.py`
+4. Commit and tag:
+   ```
+   git commit -am "Release v0.2.0"
+   git tag v0.2.0 && git push && git push --tags
+   ```
+5. Publish:
+   - `cd packages/js && npm publish --access public`
+   - `cd packages/dart && dart pub publish`
+

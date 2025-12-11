@@ -1,0 +1,13 @@
+name: ssroute_data_eurostat
+description: Eurostat SeaRoute / MARNET maritime routing graph data (GeoJSON) for Dart (VM/CLI/server).
+version: 0.1.0
+homepage: https://github.com/ssroute/data-eurostat
+repository: https://github.com/ssroute/data-eurostat
+issue_tracker: https://github.com/ssroute/data-eurostat/issues
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  # pure Dart; no Flutter dependency
+
