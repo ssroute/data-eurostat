@@ -3,11 +3,58 @@ Eurostat SeaRoute Maritime Graph (JSON)
 
 This repository publishes a language-agnostic sea-routing graph derived from Eurostat’s SeaRoute / MARNET maritime network. The data is provided in a simple JSON-based format so any routing library can consume it without depending on a specific language or framework.
 
+Explain it like I’m 5
+---------------------
+Imagine the sea has a bunch of **invisible stepping stones** you’re allowed to “hop” between.
+Those stepping stones are **nodes**.
+And the hops between them are **edges**.
+
+- **Nodes are dots on the map**: each node has an `id` and a location (`lon`, `lat`).
+- **Edges are allowed hops**: each edge says “you can go from node A to node B” and how long that hop is (`length_nm`).
+
+If you want to draw a path from one place to another, you don’t draw any random line across the ocean.
+Instead you:
+
+1. **Pick a start node** near your starting point.
+2. **Pick an end node** near your destination.
+3. Let a path-finding algorithm choose which hops to take.
+4. **Draw the result** by connecting the visited nodes into a polyline.
+
+The important bit: this produces **realistic-looking sea routes for visualization**, because the hops follow the same network structure used by the upstream maritime graph.
+
+What this is (and is not)
+-------------------------
+- **This IS** a graph dataset meant for **maps, demos, analytics, and route visualizations** (e.g. “draw plausible shipping lanes between ports”).
+- **This is NOT** a marine navigation product. Do **not** use it for real-world routing, voyage planning, safety, or decision-making.
+
 What’s inside
 -------------
 - Nodes: unique waypoints on the sea surface, each with `id`, `lon`, and `lat`.
 - Edges: directed connections between nodes, each with `from`, `to`, and `length_nm` (great-circle distance of the segment, in nautical miles).
 - Meta: a small metadata file describing schema, units, and the upstream source.
+
+How Dijkstra / A* can use this data
+-----------------------------------
+This dataset is a **weighted directed graph**:
+
+- **Vertices (nodes)**: the waypoint points.
+- **Directed edges**: allowed transitions from `from` → `to`.
+- **Weights**: `length_nm` is the cost of traversing that edge.
+
+Routing algorithms like **Dijkstra** and **A\*** don’t need “sea knowledge” — they just need a graph.
+They repeatedly expand the cheapest next hop until they reach the destination:
+
+- **Dijkstra**: uses edge weights only (finds the globally shortest path by total `length_nm`).
+- **A\***: uses edge weights **plus a heuristic** (usually straight-line distance from the current node to the goal) to speed things up.
+
+Typical visualization workflow:
+
+1. **Snap endpoints**: map your origin/destination coordinates (ports, cities, clicks on a map) to the nearest graph nodes.
+2. **Build adjacency**: from the edge list, build a `from -> [(to, length_nm), ...]` neighbor list.
+3. **Run a shortest-path search**: Dijkstra or A\* to get the sequence of node ids.
+4. **Render the route**: replace node ids with `(lon, lat)` coordinates and draw a line on your map.
+
+Note: “realistic-looking” here means **consistent with the network geometry** — it does not mean “safe” or “operationally correct”.
 
 Scope
 -----
@@ -26,6 +73,7 @@ Usage notes
 - Nodes and edges are stored as JSON; see `data/` for the graph files.
 - Length units: nautical miles (`length_nm`).
 - Coordinate reference: longitude, latitude in decimal degrees (WGS84).
+- Edges are **directed**: treat them as one-way links unless the reverse edge also exists.
 
 Packages
 --------

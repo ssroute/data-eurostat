@@ -2,4 +2,5 @@ marnet.gpkg
 .ruff_cache/
 packages/dart/lib/src/data/
 packages/js/data/
+packages/js/dist/
 .dart_tool/

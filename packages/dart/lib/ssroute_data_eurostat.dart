@@ -1,34 +1,34 @@
 library ssroute_data_eurostat;
 
-import 'dart:convert';
-import 'dart:io';
-import 'dart:isolate';
+export 'src/models.dart';
+export 'src/data.dart' show nodesData, edgesData, metaData;
 
-Future<Map<String, dynamic>> _loadJson(String packageRelativePath) async {
-  // packageRelativePath like 'src/data/nodes.geojson'
-  final uri = await Isolate.resolvePackageUri(
-    Uri.parse('package:ssroute_data_eurostat/$packageRelativePath'),
-  );
-  if (uri == null) {
-    throw StateError('Could not resolve package URI for $packageRelativePath');
-  }
-  final file = File.fromUri(uri);
-  final contents = await file.readAsString();
-  return jsonDecode(contents) as Map<String, dynamic>;
+import 'src/data.dart' as embedded_data;
+import 'src/models.dart';
+
+/// Loads the nodes as a list of [Node] objects from the package.
+///
+/// Each node is represented as a tuple [id, lon, lat].
+/// Works in all Dart environments (VM, Flutter mobile, Flutter web).
+List<Node> loadNodes() {
+  final json = embedded_data.nodesData;
+  return json.map((item) => Node.fromJson(item as List)).toList();
 }
 
-/// Loads the nodes GeoJSON FeatureCollection from the package.
-Future<Map<String, dynamic>> loadNodes() {
-  return _loadJson('src/data/nodes.geojson');
+/// Loads the edges as a list of [Edge] objects from the package.
+///
+/// Each edge is represented as a tuple [from, to, lengthNm].
+/// Works in all Dart environments (VM, Flutter mobile, Flutter web).
+List<Edge> loadEdges() {
+  final json = embedded_data.edgesData;
+  return json.map((item) => Edge.fromJson(item as List)).toList();
 }
 
-/// Loads the edges GeoJSON FeatureCollection from the package.
-Future<Map<String, dynamic>> loadEdges() {
-  return _loadJson('src/data/edges.geojson');
-}
-
-/// Loads the metadata JSON (schema, units, etc.) from the package.
-Future<Map<String, dynamic>> loadMeta() {
-  return _loadJson('src/data/meta.json');
+/// Loads the metadata [Meta] object (schema, units, etc.) from the package.
+///
+/// Works in all Dart environments (VM, Flutter mobile, Flutter web).
+Meta loadMeta() {
+  final json = embedded_data.metaData;
+  return Meta.fromJson(json);
 }
 

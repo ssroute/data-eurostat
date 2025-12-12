@@ -22,6 +22,12 @@ GPKG_FILENAME = "marnet.gpkg"
 LAYER_NAME = "type"
 COORDINATE_PRECISION = 6
 MIN_COORDS_FOR_LINE = 2
+EXPECTED_NODE_ELEMENTS = 3
+EXPECTED_EDGE_ELEMENTS = 3
+MIN_LONGITUDE = -180.0
+MAX_LONGITUDE = 180.0
+MIN_LATITUDE = -90.0
+MAX_LATITUDE = 90.0
 
 
 def download_gpkg(url: str, output_path: str) -> None:
@@ -110,7 +116,7 @@ def round_coord(coord: float) -> float:
     return round(coord, COORDINATE_PRECISION)
 
 
-def extract_nodes_and_edges(gdf: gpd.GeoDataFrame) -> Tuple[List[List], List[List], Dict[Tuple[float, float], int]]:
+def extract_nodes_and_edges(gdf: gpd.GeoDataFrame) -> Tuple[List[List], List[List]]:
     """
     Extract nodes and edges from GeoDataFrame containing LineString/MultiLineString geometries.
 
@@ -118,7 +124,7 @@ def extract_nodes_and_edges(gdf: gpd.GeoDataFrame) -> Tuple[List[List], List[Lis
         gdf: GeoDataFrame with geometry column
 
     Returns:
-        Tuple of (nodes_list, edges_list, coord_to_node_id_dict)
+        Tuple of (nodes_list, edges_list)
     """
     # Dictionary to map (lon, lat) tuples to node IDs
     coord_to_node_id: Dict[Tuple[float, float], int] = {}
@@ -175,30 +181,145 @@ def extract_nodes_and_edges(gdf: gpd.GeoDataFrame) -> Tuple[List[List], List[Lis
         else:
             print(f"Warning: Unsupported geometry type {type(geom).__name__} at index {idx}")
 
-    return nodes_list, edges_list, coord_to_node_id
+    return nodes_list, edges_list
+
+
+def validate_nodes(nodes: List[List]) -> None:
+    """
+    Validate nodes data structure and values.
+
+    Args:
+        nodes: List of node tuples [id, lon, lat]
+
+    Raises:
+        ValueError: If validation fails
+    """
+    if not nodes:
+        msg = "Nodes list is empty"
+        raise ValueError(msg)
+
+    node_ids = set()
+    for idx, node in enumerate(nodes):
+        # Check structure
+        if not isinstance(node, list):
+            msg = f"Node at index {idx} is not a list: {type(node).__name__}"
+            raise TypeError(msg)
+        if len(node) != EXPECTED_NODE_ELEMENTS:
+            msg = f"Node at index {idx} has {len(node)} elements, expected {EXPECTED_NODE_ELEMENTS}: {node}"
+            raise ValueError(msg)
+
+        # Extract and validate fields
+        try:
+            node_id = int(node[0])
+            lon = float(node[1])
+            lat = float(node[2])
+        except (ValueError, TypeError, IndexError) as e:
+            msg = f"Node at index {idx} has invalid types: {node}"
+            raise ValueError(msg) from e
+
+        # Validate ID
+        if node_id != idx:
+            msg = f"Node at index {idx} has ID {node_id}, expected {idx}"
+            raise ValueError(msg)
+
+        # Check for duplicate IDs
+        if node_id in node_ids:
+            msg = f"Duplicate node ID {node_id} found at index {idx}"
+            raise ValueError(msg)
+        node_ids.add(node_id)
+
+        # Validate coordinates
+        if not (MIN_LONGITUDE <= lon <= MAX_LONGITUDE):
+            msg = f"Node {node_id} has invalid longitude {lon}, must be between {MIN_LONGITUDE} and {MAX_LONGITUDE}"
+            raise ValueError(msg)
+        if not (MIN_LATITUDE <= lat <= MAX_LATITUDE):
+            msg = f"Node {node_id} has invalid latitude {lat}, must be between {MIN_LATITUDE} and {MAX_LATITUDE}"
+            raise ValueError(msg)
+
+    print(f"✓ Validated {len(nodes)} nodes: all IDs unique, coordinates in valid ranges")
+
+
+def validate_edges(edges: List[List], node_ids: set) -> None:
+    """
+    Validate edges data structure and values.
+
+    Args:
+        edges: List of edge tuples [fromId, toId, lengthNm]
+        node_ids: Set of valid node IDs from nodes list
+
+    Raises:
+        ValueError: If validation fails
+    """
+    if not edges:
+        msg = "Edges list is empty"
+        raise ValueError(msg)
+
+    max_node_id = max(node_ids) if node_ids else -1
+
+    for idx, edge in enumerate(edges):
+        # Check structure
+        if not isinstance(edge, list):
+            msg = f"Edge at index {idx} is not a list: {type(edge).__name__}"
+            raise TypeError(msg)
+        if len(edge) != EXPECTED_EDGE_ELEMENTS:
+            msg = f"Edge at index {idx} has {len(edge)} elements, expected {EXPECTED_EDGE_ELEMENTS}: {edge}"
+            raise ValueError(msg)
+
+        # Extract and validate fields
+        try:
+            from_id = int(edge[0])
+            to_id = int(edge[1])
+            length_nm = float(edge[2])
+        except (ValueError, TypeError, IndexError) as e:
+            msg = f"Edge at index {idx} has invalid types: {edge}"
+            raise ValueError(msg) from e
+
+        # Validate node references
+        if from_id not in node_ids:
+            msg = f"Edge at index {idx} references invalid 'from' node ID {from_id} (max valid ID: {max_node_id})"
+            raise ValueError(msg)
+        if to_id not in node_ids:
+            msg = f"Edge at index {idx} references invalid 'to' node ID {to_id} (max valid ID: {max_node_id})"
+            raise ValueError(msg)
+
+        # Validate length
+        if length_nm < 0:
+            msg = f"Edge at index {idx} has negative length {length_nm}, must be >= 0"
+            raise ValueError(msg)
+        if not math.isfinite(length_nm):
+            msg = f"Edge at index {idx} has non-finite length {length_nm}"
+            raise ValueError(msg)
+
+    print(f"✓ Validated {len(edges)} edges: all node references valid, lengths non-negative")
 
 
 def write_output_files(nodes: List[List], edges: List[List], project_root: Path) -> None:
     """
-    Write nodes.geojson, edges.geojson, and meta.json to data folder.
+    Write nodes.json, edges.json, and meta.json to data folder.
 
     Args:
         nodes: List of node tuples [id, lon, lat]
         edges: List of edge tuples [fromId, toId, lengthNm]
         project_root: Project root directory
     """
+    # Validate data before writing
+    print("\nValidating data...")
+    validate_nodes(nodes)
+    node_ids = {node[0] for node in nodes}
+    validate_edges(edges, node_ids)
+
     # Create data directory
     data_dir = project_root / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    # Write nodes.geojson to data folder
-    nodes_path = data_dir / "nodes.geojson"
+    # Write nodes.json to data folder
+    nodes_path = data_dir / "nodes.json"
     with nodes_path.open("w") as f:
         json.dump(nodes, f, separators=(",", ":"))
     print(f"Written {len(nodes)} nodes to {nodes_path}")
 
-    # Write edges.geojson to data folder
-    edges_path = data_dir / "edges.geojson"
+    # Write edges.json to data folder
+    edges_path = data_dir / "edges.json"
     with edges_path.open("w") as f:
         json.dump(edges, f, separators=(",", ":"))
     print(f"Written {len(edges)} edges to {edges_path}")
@@ -242,7 +363,7 @@ def main():
     print(f"Loaded {len(gdf)} features from layer '{LAYER_NAME}'")
 
     # Extract nodes and edges
-    nodes, edges, _ = extract_nodes_and_edges(gdf)
+    nodes, edges = extract_nodes_and_edges(gdf)
 
     print(f"\nExtracted {len(nodes)} unique nodes and {len(edges)} edges")
 

@@ -20,17 +20,50 @@ def sync_data():
         shutil.rmtree(js_data)
     shutil.copytree(DATA_SRC, js_data)
 
-    # Dart: copy data -> dart/lib/src/data
-    dart_data = DART_DIR / "lib" / "src" / "data"
-    if dart_data.exists():
-        shutil.rmtree(dart_data)
-    dart_data.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(DATA_SRC, dart_data)
+    # Dart: generate embedded data file
+    generate_dart_data()
 
     # Copy LICENSE to both packages
     license_src = ROOT / "LICENSE"
     shutil.copy(license_src, JS_DIR / "LICENSE")
     shutil.copy(license_src, DART_DIR / "LICENSE")
+
+
+def generate_dart_data():
+    """Generate Dart data file with embedded JSON."""
+    dart_data_file = DART_DIR / "lib" / "src" / "data.dart"
+    
+    # Ensure template exists
+    if not dart_data_file.exists():
+        raise FileNotFoundError(
+            f"Template file not found: {dart_data_file}\n"
+            "Make sure packages/dart/lib/src/data.dart exists with placeholders."
+        )
+    
+    # Read JSON files
+    nodes_json = (DATA_SRC / "nodes.json").read_text()
+    edges_json = (DATA_SRC / "edges.json").read_text()
+    meta_json = (DATA_SRC / "meta.json").read_text()
+    
+    # Read template
+    template = dart_data_file.read_text()
+    
+    # Replace placeholders
+    template = template.replace("__NODES_JSON_PLACEHOLDER__", nodes_json)
+    template = template.replace("__EDGES_JSON_PLACEHOLDER__", edges_json)
+    template = template.replace("__META_JSON_PLACEHOLDER__", meta_json)
+    
+    # Verify all placeholders were replaced
+    if "__NODES_JSON_PLACEHOLDER__" in template:
+        raise ValueError("Failed to replace __NODES_JSON_PLACEHOLDER__")
+    if "__EDGES_JSON_PLACEHOLDER__" in template:
+        raise ValueError("Failed to replace __EDGES_JSON_PLACEHOLDER__")
+    if "__META_JSON_PLACEHOLDER__" in template:
+        raise ValueError("Failed to replace __META_JSON_PLACEHOLDER__")
+    
+    # Write generated file
+    dart_data_file.write_text(template)
+    print(f"Generated {dart_data_file}")
 
 
 def sync_versions(version: str):
