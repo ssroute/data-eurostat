@@ -31,13 +31,14 @@ def sync_data():
 
 def generate_dart_data():
     """Generate Dart data file with embedded JSON."""
-    dart_data_file = DART_DIR / "lib" / "src" / "data.dart"
+    dart_template_file = DART_DIR / "lib" / "src" / "data.template.dart"
+    dart_out_file = DART_DIR / "lib" / "src" / "data.dart"
     
     # Ensure template exists
-    if not dart_data_file.exists():
+    if not dart_template_file.exists():
         raise FileNotFoundError(
-            f"Template file not found: {dart_data_file}\n"
-            "Make sure packages/dart/lib/src/data.dart exists with placeholders."
+            f"Template file not found: {dart_template_file}\n"
+            "Make sure packages/dart/lib/src/data.template.dart exists with placeholders."
         )
     
     # Read JSON files
@@ -46,7 +47,19 @@ def generate_dart_data():
     meta_json = (DATA_SRC / "meta.json").read_text()
     
     # Read template
-    template = dart_data_file.read_text()
+    template = dart_template_file.read_text()
+
+    # Ensure placeholders exist (avoid silently generating stale output)
+    required_placeholders = [
+        "__NODES_JSON_PLACEHOLDER__",
+        "__EDGES_JSON_PLACEHOLDER__",
+        "__META_JSON_PLACEHOLDER__",
+    ]
+    missing = [p for p in required_placeholders if p not in template]
+    if missing:
+        raise ValueError(
+            f"Missing placeholders in {dart_template_file}: {', '.join(missing)}"
+        )
     
     # Replace placeholders
     template = template.replace("__NODES_JSON_PLACEHOLDER__", nodes_json)
@@ -62,8 +75,8 @@ def generate_dart_data():
         raise ValueError("Failed to replace __META_JSON_PLACEHOLDER__")
     
     # Write generated file
-    dart_data_file.write_text(template)
-    print(f"Generated {dart_data_file}")
+    dart_out_file.write_text(template)
+    print(f"Generated {dart_out_file}")
 
 
 def sync_versions(version: str):

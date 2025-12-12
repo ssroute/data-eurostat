@@ -14,6 +14,7 @@ from typing import Dict, List, Tuple
 import fiona
 import geopandas as gpd
 import requests
+from geopy.distance import geodesic
 from shapely.geometry import LineString, MultiLineString
 
 # Constants
@@ -58,9 +59,12 @@ def download_gpkg(url: str, output_path: str) -> None:
     print(f"\nDownloaded {output_path} ({downloaded / 1024 / 1024:.2f} MB)")
 
 
-def haversine_distance(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
+def geodesic_distance_nm(lon1: float, lat1: float, lon2: float, lat2: float) -> float:
     """
-    Calculate the great circle distance between two points on Earth using Haversine formula.
+    Calculate the geodesic distance between two points on Earth using ellipsoidal model.
+
+    Uses the WGS84 ellipsoid for high accuracy. More accurate than Haversine formula
+    which assumes a perfect sphere.
 
     Args:
         lon1: Longitude of first point in degrees
@@ -71,27 +75,20 @@ def haversine_distance(lon1: float, lat1: float, lon2: float, lat2: float) -> fl
     Returns:
         Distance in nautical miles
     """
-    # Earth radius in nautical miles
-    r = 3438.9
+    # Use geopy's geodesic function with WGS84 ellipsoid
+    # Returns distance in nautical miles (nm)
+    point1 = (lat1, lon1)
+    point2 = (lat2, lon2)
+    return geodesic(point1, point2).nautical
 
-    # Convert degrees to radians
-    lat1_rad = math.radians(lat1)
-    lat2_rad = math.radians(lat2)
-    delta_lat = math.radians(lat2 - lat1)
-    delta_lon = math.radians(lon2 - lon1)
-
-    # Haversine formula
-    a = (math.sin(delta_lat / 2) ** 2 +
-         math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-    return r * c
 
 
 def calculate_polyline_length(coords: List[Tuple[float, float]]) -> float:
     """
-    Calculate the total length of a polyline by summing Haversine distances
+    Calculate the total length of a polyline by summing geodesic distances
     between consecutive vertices.
+
+    Uses ellipsoidal geodesic calculations for high accuracy.
 
     Args:
         coords: List of (lon, lat) coordinate tuples
@@ -106,7 +103,7 @@ def calculate_polyline_length(coords: List[Tuple[float, float]]) -> float:
     for i in range(len(coords) - 1):
         lon1, lat1 = coords[i]
         lon2, lat2 = coords[i + 1]
-        total_length += haversine_distance(lon1, lat1, lon2, lat2)
+        total_length += geodesic_distance_nm(lon1, lat1, lon2, lat2)
 
     return total_length
 

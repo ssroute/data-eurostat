@@ -1,4 +1,5 @@
 geopandas>=1.1.1
+geopy>=2.4.1
 shapely>=2.1.2
 requests>=2.32.5
 
